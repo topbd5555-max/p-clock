@@ -1,0 +1,46 @@
+name: Build & Release P-Clock
+
+on:
+  push:
+    tags:
+      - 'v*'           # v1.0.0, v1.0.1 ট্যাগ push করলে trigger হবে
+  workflow_dispatch:    # Manual trigger (বাটন চাপলে)
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        continue-on-error: false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Publish
+        run: npm run electron:release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: false
+
+      - name: Upload artifacts (backup)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p-clock-windows
+          path: |
+            build-out/*.exe
+            build-out/*.blockmap
+            build-out/latest.yml
+          retention-days: 30
